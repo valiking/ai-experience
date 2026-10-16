@@ -1,86 +1,300 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Experience</title>
+  <title>Game Lab - Stealth Mission</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; }
 
     body {
-      min-height: 100vh;
-      background: #050505;
-      color: white;
+      margin: 0;
+      padding: 16px;
+      background: #101810;
+      color: #e8f0df;
       font-family: Arial, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .container {
       text-align: center;
     }
 
-    h1 {
-      font-size: 50px;
-      margin-bottom: 15px;
+    h1 { color: #b7e477; font-size: 25px; }
+    p { color: #b8c6b0; }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      margin: 16px auto;
+      border: 2px solid #60734d;
+      border-radius: 8px;
+      background: #293b2c;
+      touch-action: none;
     }
 
-    p {
-      color: #999;
-      font-size: 18px;
+    #status {
+      color: #f5d77a;
+      font-weight: bold;
+      min-height: 24px;
     }
 
-    .orb {
-      width: 180px;
-      height: 180px;
-      margin: 40px auto;
-      border-radius: 50%;
-      background: radial-gradient(
-        circle at 35% 35%,
-        #ffffff,
-        #6c63ff 20%,
-        #271f9b 45%,
-        #050505 70%
-      );
-
-      box-shadow:
-        0 0 30px #6c63ff,
-        0 0 80px #4338ca,
-        0 0 150px #312e81;
-
-      animation: float 4s ease-in-out infinite;
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 64px);
+      justify-content: center;
+      gap: 7px;
+      margin: 16px auto;
     }
 
-    @keyframes float {
-      0%, 100% {
-        transform: translateY(0) scale(1);
-      }
+    button {
+      min-height: 52px;
+      border: 1px solid #70875b;
+      border-radius: 10px;
+      background: #344b35;
+      color: white;
+      font-size: 22px;
+      touch-action: none;
+    }
 
-      50% {
-        transform: translateY(-20px) scale(1.08);
-      }
+    button:active { background: #6c914d; }
+
+    .empty { visibility: hidden; }
+
+    #restart {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #607b3e;
     }
   </style>
 </head>
 
 <body>
+  <h1>GAME LAB</h1>
+  <p>MISSION 01 — REACH EXTRACTION</p>
+  <p>Move the soldier to the yellow extraction zone.</p>
 
-  <div class="container">
+  <canvas id="game" width="600" height="400"></canvas>
 
-    <h1>AI Experience</h1>
+  <p id="status">Mission active. Stay focused, soldier.</p>
 
-    <div class="orb"></div>
+  <div class="controls">
+    <button class="empty"> </button>
+    <button data-dir="up">▲</button>
+    <button class="empty"> </button>
 
-    <p>Something intelligent is coming...</p>
-
+    <button data-dir="left">◀</button>
+    <button data-dir="down">▼</button>
+    <button data-dir="right">▶</button>
   </div>
 
+  <button id="restart">Restart Mission</button>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const status = document.getElementById("status");
+
+    const player = { x: 50, y: 50, size: 20, speed: 3 };
+    const target = { x: 520, y: 320, size: 35 };
+
+    const keys = {};
+    let missionComplete = false;
+
+    const walls = [
+      { x: 130, y: 0,   w: 20, h: 230 },
+      { x: 250, y: 170, w: 20, h: 230 },
+      { x: 370, y: 0,   w: 20, h: 230 },
+      { x: 450, y: 260, w: 100, h: 20 }
+    ];
+
+    function drawWorld() {
+      ctx.fillStyle = "#293b2c";
+      ctx.fillRect(0, 0, 600, 400);
+
+      // Ground grid
+      ctx.strokeStyle = "#354a36";
+      ctx.lineWidth = 1;
+
+      for (let x = 0; x <= 600; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 400);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y <= 400; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(600, y);
+        ctx.stroke();
+      }
+
+      // Walls
+      walls.forEach(wall => {
+        ctx.fillStyle = "#17231b";
+        ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+
+        ctx.strokeStyle = "#73846a";
+        ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+      });
+
+      // Extraction zone
+      ctx.fillStyle = "#e9ca48";
+      ctx.fillRect(
+        target.x, target.y, target.size, target.size
+      );
+
+      ctx.fillStyle = "#fff2a0";
+      ctx.fillRect(
+        target.x + 8, target.y + 8,
+        target.size - 16, target.size - 16
+      );
+
+      // Soldier
+      ctx.fillStyle = "#a8d76b";
+      ctx.fillRect(
+        player.x, player.y, player.size, player.size
+      );
+
+      ctx.fillStyle = "#17231b";
+      ctx.fillRect(
+        player.x + 5, player.y + 5, 10, 10
+      );
+    }
+
+    function overlaps(a, b) {
+      return (
+        a.x < b.x + b.w &&
+        a.x + a.size > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.size > b.y
+      );
+    }
+
+    function movePlayer(dx, dy) {
+      if (missionComplete) return;
+
+      // Move horizontally
+      player.x += dx;
+
+      player.x = Math.max(
+        0, Math.min(600 - player.size, player.x)
+      );
+
+      if (walls.some(wall => overlaps(player, wall))) {
+        player.x -= dx;
+      }
+
+      // Move vertically
+      player.y += dy;
+
+      player.y = Math.max(
+        0, Math.min(400 - player.size, player.y)
+      );
+
+      if (walls.some(wall => overlaps(player, wall))) {
+        player.y -= dy;
+      }
+
+      // Check mission objective
+      const goal = {
+        x: target.x,
+        y: target.y,
+        w: target.size,
+        h: target.size
+      };
+
+      if (overlaps(player, goal)) {
+        missionComplete = true;
+        status.textContent = "MISSION COMPLETE!";
+      }
+    }
+
+    function update() {
+      let dx = 0;
+      let dy = 0;
+
+      if (keys.ArrowLeft || keys.a) dx -= player.speed;
+      if (keys.ArrowRight || keys.d) dx += player.speed;
+      if (keys.ArrowUp || keys.w) dy -= player.speed;
+      if (keys.ArrowDown || keys.s) dy += player.speed;
+
+      // Prevent faster diagonal movement
+      if (dx !== 0 && dy !== 0) {
+        dx *= Math.SQRT1_2;
+        dy *= Math.SQRT1_2;
+      }
+
+      movePlayer(dx, dy);
+    }
+
+    function gameLoop() {
+      update();
+      drawWorld();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener("keydown", event => {
+      const key = event.key.length === 1
+        ? event.key.toLowerCase()
+        : event.key;
+
+      if ([
+        "ArrowUp", "ArrowDown",
+        "ArrowLeft", "ArrowRight", " "
+      ].includes(event.key)) {
+        event.preventDefault();
+      }
+
+      keys[key] = true;
+    });
+
+    window.addEventListener("keyup", event => {
+      const key = event.key.length === 1
+        ? event.key.toLowerCase()
+        : event.key;
+
+      keys[key] = false;
+    });
+
+    // Mobile touch controls
+    document.querySelectorAll("[data-dir]").forEach(button => {
+      const direction = button.dataset.dir;
+
+      const map = {
+        up: "ArrowUp",
+        down: "ArrowDown",
+        left: "ArrowLeft",
+        right: "ArrowRight"
+      };
+
+      button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        keys[map[direction]] = true;
+        button.setPointerCapture(event.pointerId);
+      });
+
+      function release() {
+        keys[map[direction]] = false;
+      }
+
+      button.addEventListener("pointerup", release);
+      button.addEventListener("pointercancel", release);
+      button.addEventListener("lostpointercapture", release);
+    });
+
+    document.getElementById("restart").addEventListener(
+      "click", () => {
+        player.x = 50;
+        player.y = 50;
+        missionComplete = false;
+        status.textContent = "Mission active. Stay focused, soldier.";
+        Object.keys(keys).forEach(key => keys[key] = false);
+      }
+    );
+
+    gameLoop();
+  </script>
 </body>
 </html>
