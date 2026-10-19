@@ -217,7 +217,7 @@ let detected = false;
     }
 
     function movePlayer(dx, dy) {
-      if (missionComplete) return;
+      if (missionComplete || detected) return;
 
       // Move horizontally
       player.x += dx;
@@ -269,6 +269,76 @@ let detected = false;
         dx *= Math.SQRT1_2;
         dy *= Math.SQRT1_2;
       }
+
+
+
+
+            // Guard patrol
+      guard.y += guard.speed * guard.direction;
+
+      if (guard.y > guard.patrolBottom) {
+        guard.y = guard.patrolBottom;
+        guard.direction = -1;
+      }
+
+      if (guard.y < guard.patrolTop) {
+        guard.y = guard.patrolTop;
+        guard.direction = 1;
+      }
+
+      // Face the direction of movement
+      guard.facing = guard.direction === 1
+        ? Math.PI / 2
+        : -Math.PI / 2;
+
+      
+
+
+
+
+      
+
+
+            // Check whether the guard can see the player
+      if (!detected && !missionComplete) {
+        const gx = guard.x + guard.size / 2;
+        const gy = guard.y + guard.size / 2;
+
+        const px = player.x + player.size / 2;
+        const py = player.y + player.size / 2;
+
+        const dxToPlayer = px - gx;
+        const dyToPlayer = py - gy;
+
+        const distance = Math.hypot(dxToPlayer, dyToPlayer);
+
+        const angleToPlayer = Math.atan2(
+          dyToPlayer,
+          dxToPlayer
+        );
+
+        let angleDifference = angleToPlayer - guard.facing;
+
+        while (angleDifference > Math.PI) {
+          angleDifference -= Math.PI * 2;
+        }
+
+        while (angleDifference < -Math.PI) {
+          angleDifference += Math.PI * 2;
+        }
+
+        const inRange = distance < guard.range;
+
+        const inAngle =
+          Math.abs(angleDifference) < guard.angle / 2;
+
+        if (inRange && inAngle) {
+          detected = true;
+          status.textContent = "DETECTED! MISSION FAILED!";
+        }
+      }
+
+
 
       movePlayer(dx, dy);
     }
@@ -333,6 +403,11 @@ let detected = false;
         player.x = 50;
         player.y = 50;
         missionComplete = false;
+        detected = false;
+
+        guard.y = 80;
+        guard.direction = 1;
+        guard.facing = Math.PI / 2;
         status.textContent = "Mission active. Stay focused, soldier.";
         Object.keys(keys).forEach(key => keys[key] = false);
       }
