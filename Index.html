@@ -98,6 +98,23 @@
     const player = { x: 50, y: 50, size: 20, speed: 3 };
     const target = { x: 520, y: 320, size: 35 };
 
+
+    // Guard settings
+    const guard = {
+      x: 300,
+      y: 80,
+      size: 22,
+      speed: 1.2,
+      direction: 1,
+      patrolTop: 60,
+      patrolBottom: 330,
+      facing: Math.PI / 2,
+      range: 150,
+      angle: Math.PI / 3
+    };
+
+let detected = false;
+
     const keys = {};
     let missionComplete = false;
 
@@ -109,6 +126,33 @@
     ];
 
     function drawWorld() {
+      // Guard vision cone
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 190, 50, 0.18)";
+      ctx.beginPath();
+      ctx.moveTo(
+        guard.x + guard.size / 2,
+        guard.y + guard.size / 2
+      );
+      ctx.arc(
+        guard.x + guard.size / 2,
+        guard.y + guard.size / 2,
+        guard.range,
+        guard.facing - guard.angle / 2,
+        guard.facing + guard.angle / 2
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Guard body
+      ctx.fillStyle = detected ? "#ff3030" : "#e7a74b";
+      ctx.fillRect(
+        guard.x, guard.y, guard.size, guard.size
+      );
+
+
+
       ctx.fillStyle = "#293b2c";
       ctx.fillRect(0, 0, 600, 400);
 
